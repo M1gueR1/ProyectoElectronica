@@ -1,89 +1,136 @@
-// Pines del motor
+#include <Arduino.h>
+#include <TM1637Display.h>
+
+// ==================== Pines del motor ====================
 int IN1 = 8;
 int IN2 = 9;
 int IN3 = 10;
 int IN4 = 11;
 int demora = 20;
 
-// Pines del DIP switch
-int DIP_DERECHA = 2;  // DIP 1 → gira a la derecha
-int DIP_IZQUIERDA = 3; // DIP 2 → gira a la izquierda
+// ==================== Pines de los botones ====================
+int BOTON_DERECHA = 2;  // Pulsador conectado a pin 2 y GND
+int BOTON_IZQUIERDA = 3; // Pulsador conectado a pin 3 y GND
 
+// ==================== Display TM1637 ====================
+#define CLK 5
+#define DIO 6
+TM1637Display display(CLK, DIO);
+
+// ==================== Variables globales ====================
+int contador = 90; // inicia en 90
+uint8_t data[] = {0x0, 0x0, 0x0, 0x0}; // buffer de segmentos
+
+// ===========================================================
 void setup() {
+  // Pines del motor
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
 
-  // Configurar pines del DIP switch con resistencia pull-up interna
-  pinMode(DIP_DERECHA, INPUT_PULLUP);
-  pinMode(DIP_IZQUIERDA, INPUT_PULLUP);
+  // Botones con resistencia pull-up
+  pinMode(BOTON_DERECHA, INPUT_PULLUP);
+  pinMode(BOTON_IZQUIERDA, INPUT_PULLUP);
+
+  // Display
+  display.setBrightness(0x0f);
+  display.setSegments(data);
+  display.showNumberDec(contador); // mostrar 90 al inicio
 }
 
-void loop() {
-  boolean der = digitalRead(DIP_DERECHA) == LOW;    // activado si está en ON
-  boolean izq = digitalRead(DIP_IZQUIERDA) == LOW;  // activado si está en ON
+// ===========================================================
+// Funciones de giro del motor
+void girarDerecha() {
+  for (int i = 0; i < 6; i++) {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    delay(demora);
 
-  if (der) {
-    // Giro horario (derecha)
-    for (int i = 0; i < 6; i++) {
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, HIGH);
-      delay(demora);
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    delay(demora);
 
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, LOW);
-      delay(demora);
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+    delay(demora);
 
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, HIGH);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      delay(demora);
-
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      delay(demora);
-    }
-  } else if (izq) {
-    // Giro antihorario (izquierda) → inversa de la secuencia anterior
-    for (int i = 0; i < 6; i++) {
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      delay(demora);
-
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, HIGH);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      delay(demora);
-
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, LOW);
-      delay(demora);
-
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, HIGH);
-      delay(demora);
-    }
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+    delay(demora);
   }
-
-  // Detener motor
+  // detener motor
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, LOW);
-  delay(500);
+}
+
+void girarIzquierda() {
+  for (int i = 0; i < 6; i++) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+    delay(demora);
+
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+    delay(demora);
+
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    delay(demora);
+
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    delay(demora);
+  }
+  // detener motor
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+// ===========================================================
+void loop() {
+  boolean der = digitalRead(BOTON_DERECHA) == LOW;
+  boolean izq = digitalRead(BOTON_IZQUIERDA) == LOW;
+
+  if (der) {
+    delay(50); // debounce
+    if (digitalRead(BOTON_DERECHA) == LOW) {
+      contador++;
+      if (contador > 9999) contador = 9999; // límite por el display
+      display.showNumberDec(contador);
+      girarDerecha();
+      delay(200); // evita múltiples lecturas
+    }
+  }
+
+  if (izq) {
+    delay(50); // debounce
+    if (digitalRead(BOTON_IZQUIERDA) == LOW) {
+      contador--;
+      if (contador < 0) contador = 0; // límite inferior
+      display.showNumberDec(contador);
+      girarIzquierda();
+      delay(200);
+    }
+  }
 }
